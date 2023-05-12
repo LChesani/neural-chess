@@ -5,11 +5,68 @@ from Game import Game
 
 import numpy as np
 import chess
-import gym, gym_chess
-from gym_chess.alphazero.board_encoding import BoardHistory
+
+square_idx = {
+            'a': 0,
+            'b': 1,
+            'c': 2,
+            'd': 3,
+            'e': 4,
+            'f': 5,
+            'g': 6,
+            'h': 7
+        }
+
+def square_to_index(square):
+    letter = chess.square_name(square)
+    return 8-int(letter[1]), square_idx[letter[0]]
+
 
 def to_np(board):
-  return BoardHistory.encode(BoardHistory, board)
+  board3d = np.zeros((19, 8, 8), dtype=np.int8)
+
+  
+  ######## bitboard as pecas
+  for piece in chess.PIECE_TYPES:
+      for square in board.pieces(piece, chess.WHITE):
+          idx = np.unravel_index(square, (8, 8))
+          board3d[piece-1][7-idx[0]][idx[1]] = 1
+      for square in board.pieces(piece, chess.BLACK):
+          idx = np.unravel_index(square, (8, 8))
+          board3d[piece+5][7-idx[0]][idx[1]] = 1
+
+  ################## casas controladas / tensao / movimentos do rei
+  aux = board.turn
+  board.turn = chess.WHITE
+  for move in board.legal_moves:
+      i, j = square_to_index(move.to_square)
+      board3d[12][i][j] += 1
+      if board.piece_type_at(move.from_square) == chess.KING:
+        board3d[15][i][j] = 1
+
+  board.turn = chess.BLACK
+
+  for move in board.legal_moves:
+      i, j = square_to_index(move.to_square)
+      board3d[13][i][j] += 1
+      if board.piece_type_at(move.from_square) == chess.KING:
+        board3d[16][i][j] = 1
+        
+  board.turn = aux
+  
+  ############## turno
+  
+  board3d[14].fill(board.turn)
+  
+  ############ pressao no centro
+
+  center = [3, 4]
+  for i in center:
+    for j in center:
+      board3d[17][i][j] = board3d[12][i][j]
+      board3d[18][i][j] = board3d[13][i][j]
+
+  return board3d
 
 def from_move(move):
   return move.from_square*64+move.to_square
@@ -45,7 +102,7 @@ class ChessGame(Game):
     def getBoardSize(self):
         # (a,b) tuple
         # 6 piece type
-        return (8, 8, 14)
+        return (19, 8, 8)
 
     def toArray(self, board):
         return to_np(board)

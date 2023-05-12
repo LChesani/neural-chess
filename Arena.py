@@ -1,7 +1,7 @@
 import logging
-import pygame
-from graphical.board.Board import Board, draw_board
-from graphical.config import *
+#import pygame
+#from graphical.board.Board import Board, draw_board
+#from graphical.config import *
 from tqdm import tqdm
 
 log = logging.getLogger(__name__)
